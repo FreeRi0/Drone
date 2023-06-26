@@ -19,6 +19,11 @@ import {
   GamepadManager,
   Space,
   AbstractMesh,
+  KeyboardEventTypes,
+  StandardMaterial,
+  DualShockButton,
+  DualShockDpad,
+  DualShockPad,
 } from "@babylonjs/core";
 import "@babylonjs/materials";
 import "@babylonjs/loaders";
@@ -42,6 +47,7 @@ export class BasicScene {
   throttle: any;
   angularDamping: any;
   prop1: any;
+  buttonsText: any;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -68,7 +74,8 @@ export class BasicScene {
       new Vector3(0, 0, 0),
       this.scene
     );
-
+    // this.buttonsText = new GUI.TextBlock("buttons", "");
+    // this.buttonsText.height = "30px";
     this.flightMode = "angle";
     this.throttle = 0;
     this.yaw = 0;
@@ -93,7 +100,7 @@ export class BasicScene {
     camera.panningSensibility = 0;
     (camera as any).cameraAcceleration = 0.1; // how fast to move
     (camera as any).maxCameraSpeed = 2; // speed limit
-    camera.pinchDeltaPercentage = 0.0006;
+    camera.pinchDeltaPercentage = 0.00060;
     camera.wheelPrecision = 20;
 
     const hemiLight = new HemisphericLight(
@@ -104,94 +111,16 @@ export class BasicScene {
 
     hemiLight.intensity = 0.7;
 
-    this.CreateDron();
-
     this.scene.debugLayer.show();
 
-    // const { meshes } = await SceneLoader.ImportMeshAsync(
-    //   "",
-    //   "./models/",
-    //   "Drone3.glb",
-    //   this.scene,
-    //   (newMeshes) => {
-    //     console.log(meshes);
-
-    //     this.drone = newMeshes[0];
-
-    //   }
-    // );
-
-
-    // // drone.scaling.scaleInPlace(0.25);
-    // this.prop1 = this.scene.getMeshByName("mesh_588");
-
-    // Bake transform to plane
-
-    this.drone = MeshBuilder.CreateBox("box");
-    this.drone.position.y = 0.3;
-    this.drone.rotate(new Vector3(0, 1, 0), Math.PI / 2, Space.WORLD);
-    this.drone.bakeCurrentTransformIntoVertices();
-
-    // Create a sphere shape and the associated body. Size will be determined automatically.
-    var dummyPhysicsRoot = MeshBuilder.CreateBox(
-      "dummyPhysicsRoot",
-      { size: 1, height: 0.4, width: 1 },
-      this.scene
-    );
-    dummyPhysicsRoot.addChild(this.drone);
-    // DummyPhysicsRoot Visibility Change to 0 to Hide
-    dummyPhysicsRoot.visibility = 0.2;
-    dummyPhysicsRoot.position.y = 1;
-
-    var dummyAggregate = new PhysicsAggregate(
-      dummyPhysicsRoot,
-      PhysicsShapeType.BOX,
-      { mass: 1, restitution: 0.1 },
-      this.scene
-    );
-    dummyAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-
-    this.MoveDron(dummyAggregate);
-
-    dummyAggregate.body.setMassProperties({
-      inertia: new Vector3(1, 0, 1),
-      centerOfMass: new Vector3(0, -1, 0),
-    });
-
-    // this.drone.position.y = -0.2;
-    // this.drone.scaling.scaleInPlace(0.25);
-    // this.prop1 = this.scene.getMeshByName("mesh_588");
-    // var dummyPhysicsRoot = MeshBuilder.CreateBox(
-    //   "dummyPhysicsRoot",
-    //   { size: 1, height: 0.4, width: 1 },
-    //   this.scene
-    // );
-    // dummyPhysicsRoot.addChild(this.drone);
-    // dummyPhysicsRoot.visibility = 0.2;
-    // dummyPhysicsRoot.position.y = 1;
-
-    // var dummyAggregate = new PhysicsAggregate(
-    //   dummyPhysicsRoot,
-    //   PhysicsShapeType.BOX,
-    //   { mass: 1, restitution: 0.1 },
-    //   this.scene
-    // );
-    // dummyAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-
-    // this.MoveDron(dummyAggregate);
-
-    // dummyAggregate.body.setMassProperties({
-    //   inertia: new Vector3(1, 0, 1),
-    //   centerOfMass: new Vector3(0, -1, 0),
-    // });
-
-    //  this.drone.rotate(new Vector3(0, 1, 0), Math.PI / 2, Space.WORLD);
-    // this.drone.bakeCurrentTransformIntoVertices();
+    this.CreateDron();
 
     this.CreateEnvironment();
 
+    this.CreateMap();
+
     const envTex = CubeTexture.CreateFromPrefilteredData(
-      "./enviroments/desert.env",
+      "./enviroments/city.env",
       this.scene
     );
 
@@ -204,31 +133,71 @@ export class BasicScene {
   }
 
   async CreateDron(): Promise<void> {
-    const { meshes } = await SceneLoader.ImportMeshAsync(
+
+    const res = await SceneLoader.ImportMeshAsync(
       "",
       "./models/",
-      "Drone3.glb"
-    );
+      "DRONE_Vint.glb", this.scene)
 
-    console.log(meshes);
+      this.drone = res.meshes[0];
+        console.log("dron");
+        console.log(this.drone);
+        this.drone.position.y = 0.5;
+
+        // this.drone.scaling.scaleInPlace(0.25);
+        this.prop1 = this.scene.getMeshByName('mesh_588');
+
+        // Bake transform to plane
+        this.drone.rotate(new Vector3(0, 1, 0), Math.PI / 2, Space.WORLD);
+        this.drone.bakeCurrentTransformIntoVertices();
+
+        var dummyPhysicsRoot = MeshBuilder.CreateBox("dummyPhysicsRoot", { size: 1, height: 0.4, width: 1 }, this.scene);
+        dummyPhysicsRoot.addChild(this.drone);
+        // DummyPhysicsRoot Visibility Change to 0 to Hide
+        dummyPhysicsRoot.visibility = 0.2;
+        dummyPhysicsRoot.position.y = 1;
+
+        var dummyAggregate = new PhysicsAggregate(dummyPhysicsRoot, PhysicsShapeType.BOX, { mass: 1, restitution: 0.1 }, this.scene);
+        dummyAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
+
+        this.MoveDron(dummyAggregate);
+        // this.MoveKeyBoard(dummyAggregate);
+
+        dummyAggregate.body.setMassProperties({
+            inertia: new Vector3(1, 0, 1),
+            centerOfMass: new Vector3(0, -1, 0)
+        });
+
+      console.log(res);
+
   }
 
-  CreateEnvironment(): void {
+   CreateMap(): void {
+   SceneLoader.ImportMeshAsync("",
+    "./models/",
+    "Buildingg.glb", this.scene).then((models) =>{
+    models.meshes[0].position.x = 10;
+    models.meshes[0].position.y = -0.2;
+    })
+  }
+
+ CreateEnvironment(): void {
     const ground = MeshBuilder.CreateGround(
       "ground",
-      { width: 50, height: 50 },
+      { width: 2000, height: 2000 },
       this.scene
     );
 
     ground.position.y = -2;
     ground.material = this.CreateAsphalt();
-
     var groundAggregate = new PhysicsAggregate(
       ground,
       PhysicsShapeType.BOX,
-      { mass: 0, restitution: 0.1 },
+      { mass: 0 },
       this.scene
     );
+
+
   }
 
   CreateAsphalt(): PBRMaterial {
@@ -256,8 +225,6 @@ export class BasicScene {
       this.scene
     );
 
-    // pbr.roughness = 1;
-
     return pbr;
   }
 
@@ -265,51 +232,28 @@ export class BasicScene {
     this.gamepadManager.onGamepadConnectedObservable.add(
       (gamepad: any, state: any) => {
         //connectionText.text = "Connected: " + gamepad.id;
-
-        // Handle gamepad types
-        if (gamepad instanceof Xbox360Pad) {
-          // // Xbox button down/up events
-          gamepad.onButtonDownObservable.add((button, state) => {
-            console.log(Xbox360Button[button] + " pressed");
-          });
-          gamepad.onButtonUpObservable.add((button, state) => {
-            console.log(Xbox360Button[button] + " released");
-          });
-
-          // Stick events
-          gamepad.onleftstickchanged((values) => {
-            console.log(
-              "RightStick: x: " +
-                values.x.toFixed(3) +
-                " y:" +
-                values.y.toFixed(3)
-            );
-          });
-          gamepad.onrightstickchanged((values) => {
-            console.log(
-              "LeftStick: x: " +
-                values.x.toFixed(3) +
-                " y:" +
-                values.y.toFixed(3)
-            );
-          });
-        } else if (gamepad instanceof GenericPad) {
+         if (gamepad instanceof DualShockPad) {
           // Generic button down/up events
-          gamepad.onButtonDownObservable.add((button, state) => {
-            console.log(button + " pressed");
-          });
-          gamepad.onButtonUpObservable.add((button, state) => {
-            console.log(button + " released");
-          });
+          gamepad.onButtonDownObservable.add((button, state)=>{
+            if(gamepad.buttonL1){
+              this.drone.position.y-=1
+            }
+        })
+
+        gamepad.onButtonUpObservable.add((button, state)=>{
+          if(gamepad.buttonR1){
+            this.drone.position.y+=1
+          }
+        })
           // Stick events
           gamepad.onleftstickchanged((values) => {
             // Roll
-            // if (flightMode == 'acro') {
-            //     drone.rotate(new Vector3(0, 0, 1), values.y.toFixed(1), Space.LOCAL);
-            // };
+            if (this.flightMode == 'acro') {
+                this.drone.rotate(new Vector3(0, 0, 1), values.y.toFixed(1), Space.LOCAL);
+            };
 
             if (this.flightMode == "angle") {
-              //drone.rotationQuaternion = new Quaternion.RotationAxis(new Vector3(0, 0, 1), values.y.toFixed(1));
+              // this.drone.rotationQuaternion = Quaternion.RotationAxis(new Vector3(0, 0, 1), values.y.toFixed(1));
               this.roll = values.y.toFixed(3);
               this.yprQuaternion = Quaternion.RotationYawPitchRoll(
                 this.yaw,
@@ -319,9 +263,9 @@ export class BasicScene {
               player.rotationQuaternion = this.yprQuaternion;
             }
             // Pitch
-            // if (flightMode == 'acro') {
-            //     drone.rotate(new Vector3(1, 0, 0), values.x.toFixed(1), Space.LOCAL);
-            // };
+            if (this.flightMode == 'acro') {
+                this.drone.rotate(new Vector3(1, 0, 0), values.x.toFixed(1), Space.LOCAL);
+            };
 
             if (this.flightMode == "angle") {
               //drone.rotationQuaternion = new Quaternion.RotationAxis(new Vector3(1, 0, 0), values.x.toFixed(1));
@@ -338,8 +282,8 @@ export class BasicScene {
           gamepad.onrightstickchanged((values) => {
             // Throttle
             this.throttle = values.x.toFixed(3);
-            // drone.position.y = values.x;
-            // player.physicsBody.applyForce(forceValue, new Vector3(0, throttle, 0), 0);
+            this.drone.position.y = values.x;
+            player.physicsBody.applyForce (new Vector3(0, this.throttle, 0), 0);
 
             // Yaw
             if (this.flightMode == "angle") {
@@ -353,8 +297,30 @@ export class BasicScene {
       }
     );
 
-    // gamepadManager.onGamepadDisconnectedObservable.add((gamepad, state) => {
-    //     connectionText.text = "Disconnected: " + gamepad.id;
-    // })
+    this.scene.onKeyboardObservable.add((kbInfo) => {
+      switch (kbInfo.type) {
+        case KeyboardEventTypes.KEYDOWN:
+          switch (kbInfo.event.key) {
+                      case "a":
+                      case "A":
+                          this.drone.position.x -= 0.1;
+                      break
+                      case "d":
+                      case "D":
+                        this.drone.position.x += 0.1;
+                      break
+                      case "w":
+                      case "W":
+                        this.drone.position.y += 0.1;
+                      break
+                      case "s":
+                      case "S":
+                        this.drone.position.y -= 0.1;
+                      break
+                  }
+        break;
+      }
+    });
   }
+
 }
