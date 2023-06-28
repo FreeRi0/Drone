@@ -19,7 +19,10 @@
     "core-js": "^3.6.5",
     "quasar": "^2.6.0",
     "vue": "^3.0.0",
-    "vue-router": "^4.0.0"
+    "vue-router": "^4.0.0",
+    "cannon": "^0.6.2",
+    "@types/cannon": "^0.1.8",
+    "ammojs-typed": "^1.0.6"
   },
   "devDependencies": {
     "@babylonjs/core": "^6.8.0",

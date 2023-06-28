@@ -1,8 +1,25 @@
-{
-  "extends": "@quasar/app-webpack/tsconfig-preset",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "noImplicitAny": false,
+// {
+//   "extends": "@quasar/app-webpack/tsconfig-preset",
+//   "compilerOptions": {
+//     "baseUrl": ".",
+//     "noImplicitAny": false,
 
+//   }
+// }
+
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noResolve": false,
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "preserveConstEnums":true,
+    "lib": [
+        "dom",
+        "es6"
+    ],
+    "rootDir": "src"
   }
 }

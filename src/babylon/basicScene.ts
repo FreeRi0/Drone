@@ -8,196 +8,163 @@ import {
   PBRMaterial,
   Texture,
   SceneLoader,
-  Quaternion,
-  GenericPad,
-  Xbox360Button,
-  Xbox360Pad,
-  PhysicsAggregate,
-  PhysicsMotionType,
-  PhysicsShapeType,
   ArcRotateCamera,
-  GamepadManager,
   Space,
   AbstractMesh,
-  KeyboardEventTypes,
   StandardMaterial,
-  DualShockButton,
-  DualShockDpad,
-  DualShockPad,
+  DirectionalLight,
+  UniversalCamera,
+  CannonJSPlugin,
+  PhysicsImpostor,
+  HDRCubeTexture,
+
 } from "@babylonjs/core";
 import "@babylonjs/materials";
 import "@babylonjs/loaders";
-import { throttle } from "quasar";
-import { PhysicsEngine, HavokPlugin } from "@babylonjs/core/Physics";
-import HavokPhysics from "@babylonjs/havok";
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
+import Drone from './drone/drone';
+import * as CANNON from "cannon";
 
-export class BasicScene {
-  gamepadManager: any;
+export default class BasicScene {
   scene: Scene;
   engine: Engine;
-  drone: any;
-  canvas: HTMLCanvasElement;
-  flightMode: string = "";
-  roll: any;
-  yaw: any;
-  pitch: any;
-  yprQuaternion: any;
-  throttle: any;
-  angularDamping: any;
-  prop1: any;
-  buttonsText: any;
+  controller: Drone;
+  // canvas: HTMLCanvasElement;
+  camera: UniversalCamera;
+  light: DirectionalLight;
 
-  constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas;
-    // console.log(this.canvas);
-    this.engine = new Engine(this.canvas, true);
-    // console.log(this.engine);
-    this.scene = new Scene(this.engine);
-    this.gamepadManager = new GamepadManager();
-  }
-
-  async CreateScene(): Promise<Scene> {
-    const havokInstance = await HavokPhysics();
-    // pass the engine to the plugin
-    const hk = new HavokPlugin(true, havokInstance);
-
-    // enable physics in the scene with a gravity
-    this.scene.enablePhysics(new Vector3(0, -9.8, 0), hk);
-
-    const camera = new ArcRotateCamera(
-      "ArcRotateCamera",
-      0.3,
-      1.2,
-      5,
-      new Vector3(0, 0, 0),
-      this.scene
-    );
-    // this.buttonsText = new GUI.TextBlock("buttons", "");
-    // this.buttonsText.height = "30px";
-    this.flightMode = "angle";
-    this.throttle = 0;
-    this.yaw = 0;
-    this.pitch = 0;
-    this.roll = 0;
-    this.yprQuaternion = Quaternion.RotationYawPitchRoll(
-      this.yaw,
-      this.pitch,
-      this.roll
-    );
-    this.prop1 = AbstractMesh;
-    this.drone = AbstractMesh;
-
-    this.angularDamping = 10;
-
-    camera.setTarget(Vector3.Zero());
-
-    // This attaches the camera to the canvas
-    camera.attachControl(this.canvas, true);
-    camera.allowUpsideDown = false;
-    camera.panningSensibility = 0;
-    camera.panningSensibility = 0;
-    (camera as any).cameraAcceleration = 0.1; // how fast to move
-    (camera as any).maxCameraSpeed = 2; // speed limit
-    camera.pinchDeltaPercentage = 0.00060;
-    camera.wheelPrecision = 20;
-
-    const hemiLight = new HemisphericLight(
-      "hemiLight",
-      new Vector3(0, 1, 0),
-      this.scene
-    );
-
-    hemiLight.intensity = 0.7;
-
-    this.scene.debugLayer.show();
-
-    this.CreateDron();
-
+  constructor(private canvas: HTMLCanvasElement) {
+    this.engine = new Engine(this.canvas, true, { stencil: true });
+    this.scene = this.CreateScene();
     this.CreateEnvironment();
-
-    this.CreateMap();
-
-    const envTex = CubeTexture.CreateFromPrefilteredData(
-      "./enviroments/city.env",
-      this.scene
-    );
-
-    this.scene.createDefaultSkybox(envTex, true);
-
+    this.controller = new Drone(this.scene, this.engine);
+    this.camera = this.controller.camera;
+    this.createSkyBox();
     this.engine.runRenderLoop(() => {
       this.scene.render();
     });
+  }
+
+   CreateScene(): Scene {
+
+    const scene = new Scene(this.engine);
+
+    this.light = new DirectionalLight(
+      "directionalLight",
+      new Vector3(0.947, -0.319, -0.04),
+      this.scene
+    );
+
+    this.light.position = new Vector3(-10, -0.319, -0.04);
+
+    this.light.intensity = 0.9;
+
+    const framesPerSecond = 60;
+    const gravity = -9.81;
+    scene.gravity = new Vector3(0, gravity / framesPerSecond, 0);
+    scene.collisionsEnabled = true;
+    // this.scene.debugLayer.show();
+
     return this.scene;
   }
 
-  async CreateDron(): Promise<void> {
-
-    const res = await SceneLoader.ImportMeshAsync(
-      "",
-      "./models/",
-      "DRONE_Vint.glb", this.scene)
-
-      this.drone = res.meshes[0];
-        console.log("dron");
-        console.log(this.drone);
-        this.drone.position.y = 0.5;
-
-        // this.drone.scaling.scaleInPlace(0.25);
-        this.prop1 = this.scene.getMeshByName('mesh_588');
-
-        // Bake transform to plane
-        this.drone.rotate(new Vector3(0, 1, 0), Math.PI / 2, Space.WORLD);
-        this.drone.bakeCurrentTransformIntoVertices();
-
-        var dummyPhysicsRoot = MeshBuilder.CreateBox("dummyPhysicsRoot", { size: 1, height: 0.4, width: 1 }, this.scene);
-        dummyPhysicsRoot.addChild(this.drone);
-        // DummyPhysicsRoot Visibility Change to 0 to Hide
-        dummyPhysicsRoot.visibility = 0.2;
-        dummyPhysicsRoot.position.y = 1;
-
-        var dummyAggregate = new PhysicsAggregate(dummyPhysicsRoot, PhysicsShapeType.BOX, { mass: 1, restitution: 0.1 }, this.scene);
-        dummyAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-
-        this.MoveDron(dummyAggregate);
-        // this.MoveKeyBoard(dummyAggregate);
-
-        dummyAggregate.body.setMassProperties({
-            inertia: new Vector3(1, 0, 1),
-            centerOfMass: new Vector3(0, -1, 0)
-        });
-
-      console.log(res);
-
+  async enablePhysic(): Promise<void> {
+    this.scene.enablePhysics(
+      new Vector3(0, -9.81, 0),
+      new CannonJSPlugin(true, 10, CANNON)
+    );
   }
 
-   CreateMap(): void {
-   SceneLoader.ImportMeshAsync("",
-    "./models/",
-    "Buildingg.glb", this.scene).then((models) =>{
-    models.meshes[0].position.x = 10;
-    models.meshes[0].position.y = -0.2;
-    })
-  }
+  // async CreateDron(): Promise<void> {
 
- CreateEnvironment(): void {
+  //   const res = await SceneLoader.ImportMeshAsync(
+  //     "",
+  //     "./models/",
+  //     "DRONE_Vint.glb", this.scene)
+
+  //     this.drone = res.meshes[0];
+  //       console.log("dron");
+  //       console.log(this.drone);
+  //       this.drone.position.y = 0.5;
+
+  //       // this.drone.scaling.scaleInPlace(0.25);
+  //       this.prop1 = this.scene.getMeshByName('mesh_588');
+
+  //       // Bake transform to plane
+  //       this.drone.rotate(new Vector3(0, 1, 0), Math.PI / 2, Space.WORLD);
+  //       this.drone.bakeCurrentTransformIntoVertices();
+
+  //       var dummyPhysicsRoot = MeshBuilder.CreateBox("dummyPhysicsRoot", { size: 1, height: 0.4, width: 1 }, this.scene);
+  //       dummyPhysicsRoot.addChild(this.drone);
+  //       // DummyPhysicsRoot Visibility Change to 0 to Hide
+  //       dummyPhysicsRoot.visibility = 0.2;
+  //       dummyPhysicsRoot.position.y = 1;
+
+  //       var dummyAggregate = new PhysicsAggregate(dummyPhysicsRoot, PhysicsShapeType.BOX, { mass: 1, restitution: 0.1 }, this.scene);
+  //       dummyAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
+
+  //       this.MoveDron(dummyAggregate);
+  //       // this.MoveKeyBoard(dummyAggregate);
+
+  //       dummyAggregate.body.setMassProperties({
+  //           inertia: new Vector3(1, 0, 1),
+  //           centerOfMass: new Vector3(0, -1, 0)
+  //       });
+
+  //     console.log(res);
+
+  // }
+
+ async CreateEnvironment(): Promise<void> {
+  this.enablePhysic();
     const ground = MeshBuilder.CreateGround(
       "ground",
-      { width: 2000, height: 2000 },
+      { width: 500, height: 500 },
       this.scene
     );
 
-    ground.position.y = -2;
+    // ground.physicsImpostor = new PhysicsImpostor(
+    //   ground,
+    //   PhysicsImpostor.PlaneImpostor,
+    //   { mass: 0 }
+    // );
+
+    ground.checkCollisions = true;
+    ground.position.y = 4.359;
+    ground.isVisible = false;
     ground.material = this.CreateAsphalt();
-    var groundAggregate = new PhysicsAggregate(
-      ground,
-      PhysicsShapeType.BOX,
-      { mass: 0 },
-      this.scene
+
+    const homeMeshes = await SceneLoader.ImportMeshAsync(
+      "",
+      "./models/",
+      "skyscaper.glb"
     );
+    const home = homeMeshes.meshes[1];
+    // home.physicsImpostor = new PhysicsImpostor(
+    //   home,
+    //   PhysicsImpostor.BoxImpostor,
+    //   { mass: 0 }
+    // );
 
+    home.position.y = home.position.y - home.position.y / 2;
+    // home.checkCollisions = true;
 
+    const homeBox = MeshBuilder.CreateBox("homeBox", {
+      width: 5,
+      height: 5,
+      depth: 5,
+    });
+    homeBox.position.set(-0.001, 6.513, -5.405);
+    homeBox.scaling.set(0.838, 0.864, 1.235);
+
+    homeBox.physicsImpostor = new PhysicsImpostor(
+      homeBox,
+      PhysicsImpostor.BoxImpostor,
+      { mass: 0 }
+    );
+    homeBox.checkCollisions = true;
+    homeBox.isVisible = false;
   }
 
   CreateAsphalt(): PBRMaterial {
@@ -228,99 +195,110 @@ export class BasicScene {
     return pbr;
   }
 
-  MoveDron(player: any): void {
-    this.gamepadManager.onGamepadConnectedObservable.add(
-      (gamepad: any, state: any) => {
-        //connectionText.text = "Connected: " + gamepad.id;
-         if (gamepad instanceof DualShockPad) {
-          // Generic button down/up events
-          gamepad.onButtonDownObservable.add((button, state)=>{
-            if(gamepad.buttonL1){
-              this.drone.position.y-=1
-            }
-        })
-
-        gamepad.onButtonUpObservable.add((button, state)=>{
-          if(gamepad.buttonR1){
-            this.drone.position.y+=1
-          }
-        })
-          // Stick events
-          gamepad.onleftstickchanged((values) => {
-            // Roll
-            if (this.flightMode == 'acro') {
-                this.drone.rotate(new Vector3(0, 0, 1), values.y.toFixed(1), Space.LOCAL);
-            };
-
-            if (this.flightMode == "angle") {
-              // this.drone.rotationQuaternion = Quaternion.RotationAxis(new Vector3(0, 0, 1), values.y.toFixed(1));
-              this.roll = values.y.toFixed(3);
-              this.yprQuaternion = Quaternion.RotationYawPitchRoll(
-                this.yaw,
-                this.pitch,
-                this.roll
-              );
-              player.rotationQuaternion = this.yprQuaternion;
-            }
-            // Pitch
-            if (this.flightMode == 'acro') {
-                this.drone.rotate(new Vector3(1, 0, 0), values.x.toFixed(1), Space.LOCAL);
-            };
-
-            if (this.flightMode == "angle") {
-              //drone.rotationQuaternion = new Quaternion.RotationAxis(new Vector3(1, 0, 0), values.x.toFixed(1));
-              this.pitch = values.x.toFixed(3);
-              this.yprQuaternion = Quaternion.RotationYawPitchRoll(
-                this.yaw,
-                this.pitch,
-                this.roll
-              );
-              player.rotationQuaternion = this.yprQuaternion;
-            }
-          });
-
-          gamepad.onrightstickchanged((values) => {
-            // Throttle
-            this.throttle = values.x.toFixed(3);
-            this.drone.position.y = values.x;
-            player.physicsBody.applyForce (new Vector3(0, this.throttle, 0), 0);
-
-            // Yaw
-            if (this.flightMode == "angle") {
-              this.yaw = values.y.toFixed(3);
-              var rotationAxis = new Vector3(0, 1, 0); // el eje de rotación
-              player.body.setAngularDamping(this.angularDamping);
-              player.body.setAngularVelocity(rotationAxis.scale(this.yaw));
-            }
-          });
-        }
-      }
+  createSkyBox(): void {
+    const skyboxMaterial = new HDRCubeTexture(
+      "./enviroments/towns.hdr",
+        this.scene,
+      1000
     );
 
-    this.scene.onKeyboardObservable.add((kbInfo) => {
-      switch (kbInfo.type) {
-        case KeyboardEventTypes.KEYDOWN:
-          switch (kbInfo.event.key) {
-                      case "a":
-                      case "A":
-                          this.drone.position.x -= 0.1;
-                      break
-                      case "d":
-                      case "D":
-                        this.drone.position.x += 0.1;
-                      break
-                      case "w":
-                      case "W":
-                        this.drone.position.y += 0.1;
-                      break
-                      case "s":
-                      case "S":
-                        this.drone.position.y -= 0.1;
-                      break
-                  }
-        break;
-      }
-    });
+    // this.scene.environmentTexture = skyboxMaterial;
+    this.scene.createDefaultSkybox(skyboxMaterial, true);
   }
+
+  // MoveDron(player: any): void {
+  //   this.gamepadManager.onGamepadConnectedObservable.add(
+  //     (gamepad: any, state: any) => {
+  //       //connectionText.text = "Connected: " + gamepad.id;
+  //        if (gamepad instanceof DualShockPad) {
+  //         // Generic button down/up events
+  //         gamepad.onButtonDownObservable.add((button, state)=>{
+  //           if(gamepad.buttonL1){
+  //             this.drone.position.y-=1
+  //           }
+  //       })
+
+  //       gamepad.onButtonUpObservable.add((button, state)=>{
+  //         if(gamepad.buttonR1){
+  //           this.drone.position.y+=1
+  //         }
+  //       })
+  //         // Stick events
+  //         gamepad.onleftstickchanged((values) => {
+  //           // Roll
+  //           if (this.flightMode == 'acro') {
+  //               this.drone.rotate(new Vector3(0, 0, 1), values.y.toFixed(1), Space.LOCAL);
+  //           };
+
+  //           if (this.flightMode == "angle") {
+  //             // this.drone.rotationQuaternion = Quaternion.RotationAxis(new Vector3(0, 0, 1), values.y.toFixed(1));
+  //             this.roll = values.y.toFixed(3);
+  //             this.yprQuaternion = Quaternion.RotationYawPitchRoll(
+  //               this.yaw,
+  //               this.pitch,
+  //               this.roll
+  //             );
+  //             player.rotationQuaternion = this.yprQuaternion;
+  //           }
+  //           // Pitch
+  //           if (this.flightMode == 'acro') {
+  //               this.drone.rotate(new Vector3(1, 0, 0), values.x.toFixed(1), Space.LOCAL);
+  //           };
+
+  //           if (this.flightMode == "angle") {
+  //             //drone.rotationQuaternion = new Quaternion.RotationAxis(new Vector3(1, 0, 0), values.x.toFixed(1));
+  //             this.pitch = values.x.toFixed(3);
+  //             this.yprQuaternion = Quaternion.RotationYawPitchRoll(
+  //               this.yaw,
+  //               this.pitch,
+  //               this.roll
+  //             );
+  //             player.rotationQuaternion = this.yprQuaternion;
+  //           }
+  //         });
+
+  //         gamepad.onrightstickchanged((values) => {
+  //           // Throttle
+  //           this.throttle = values.x.toFixed(3);
+  //           this.drone.position.y = values.x;
+  //           player.physicsBody.applyForce (new Vector3(0, this.throttle, 0), 0);
+
+  //           // Yaw
+  //           if (this.flightMode == "angle") {
+  //             this.yaw = values.y.toFixed(3);
+  //             var rotationAxis = new Vector3(0, 1, 0); // el eje de rotación
+  //             player.body.setAngularDamping(this.angularDamping);
+  //             player.body.setAngularVelocity(rotationAxis.scale(this.yaw));
+  //           }
+  //         });
+  //       }
+  //     }
+  //   );
+
+  //   this.scene.onKeyboardObservable.add((kbInfo) => {
+  //     switch (kbInfo.type) {
+  //       case KeyboardEventTypes.KEYDOWN:
+  //         switch (kbInfo.event.key) {
+  //                     case "a":
+  //                     case "A":
+  //                         this.drone.position.x -= 0.1;
+  //                     break
+  //                     case "d":
+  //                     case "D":
+  //                       this.drone.position.x += 0.1;
+  //                     break
+  //                     case "w":
+  //                     case "W":
+  //                       this.drone.position.y += 0.1;
+  //                     break
+  //                     case "s":
+  //                     case "S":
+  //                       this.drone.position.y -= 0.1;
+  //                     break
+  //                 }
+  //       break;
+  //     }
+  //   });
+  // }
 
 }
