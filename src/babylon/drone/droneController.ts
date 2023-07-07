@@ -12,12 +12,13 @@ export default class playerController {
   private fly: Fly;
 
   constructor(
-    private body: AbstractMesh,
+    private drone: AbstractMesh,
     private scene: Scene,
     private engine: Engine,
     private head: Mesh,
+    // private vint: AbstractMesh
   ) {
-    this.fly = new Fly(this.body, this.scene, this.engine, this.head);
+    this.fly = new Fly(this.drone, this.scene, this.engine, this.head);
   }
   setController(): void {
     this.fly.setMovementEvents();

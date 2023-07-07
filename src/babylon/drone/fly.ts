@@ -26,15 +26,18 @@ export default class Movement extends droneStatus {
 
   private speedVector: Vector3;
   //координата высоты на которую должен запрыгнуть персонаж
-  private jumpDestination: number;
+  // private jumpDestination: number;
+  // private DescentDestination: number;
   //если игрок продолжает двигаться вверх
   private isJumping = false;
+  private isDescending = false;
   //момент прыжка должен исполняться один раз
   private isStartJump = false;
+  private isDescent = false;
 
   private deltaTime: number;
   constructor(
-    private body: AbstractMesh,
+    private drone: AbstractMesh,
     private scene: Scene,
     private engine: Engine,
     private head: Mesh
@@ -69,7 +72,10 @@ export default class Movement extends droneStatus {
       }
 
       if (this.controls.jump && this.isGround()) {
-        this.isStartJump = true;
+        accelerationDir.addInPlace(Vector3.Up());
+      }
+      if(this.controls.descent && !this.isGround()) {
+        accelerationDir.addInPlace(Vector3.Down());
       }
     });
     this.scene.registerBeforeRender(() => {
@@ -98,12 +104,13 @@ export default class Movement extends droneStatus {
   // общая функция движения, передает результирующий вектор в метод передвижения
   private handleMovement(accelerationDir: Vector3): void {
     this.handleStartJumping();
+    this.handleStartDescending();
     const addingAcceleration = this.calcAddingAcceleration(
       accelerationDir,
       this.getAcceleration()
     );
     const resultVector = this.getResultSpeedVector(addingAcceleration);
-    this.body.moveWithCollisions(resultVector);
+    this.drone.moveWithCollisions(resultVector);
   }
 
   //формирует направление и скорость передвижения, исходя из ускорения и направления игрока
@@ -111,7 +118,7 @@ export default class Movement extends droneStatus {
     const resultVector = Vector3.Zero();
     this.speedVector.addInPlace(addingAcceleration.scale(this.deltaTime));
     this.correctMaxSpeed();
-    if (addingAcceleration.equals(Vector3.Zero())) this.doBrake();
+    if (addingAcceleration.equals(Vector3.Zero()))
     this.speedVector = this.handleJumping(this.speedVector);
     const m = Matrix.RotationAxis(Axis.Y, this.head.rotation.y);
     Vector3.TransformCoordinatesToRef(this.speedVector, m, resultVector);
@@ -145,26 +152,40 @@ export default class Movement extends droneStatus {
     }
     return 0;
   }
-  //управление переменными начала прыжка
+  //управление переменными начала полета
   private handleStartJumping() {
     if (!this.isGround()) {
       this.isStartJump = false;
     }
     if (this.isStartJump) {
-      this.jumpDestination = this.jumpHeight + this.body.position.y;
+      // this.jumpDestination = this.jumpHeight + this.drone.position.y;
       this.isJumping = true;
       this.isStartJump = false;
     }
-    if (this.isJumping && this.body.position.y >= this.jumpDestination) {
-      this.isJumping = false;
+    // if (this.isJumping && this.drone.position.y >= this.jumpDestination) {
+    //   this.isJumping = false;
+    // }
+  }
+
+  private handleStartDescending() {
+    if (this.isGround()) {
+      this.isDescent = false;
     }
+    if (this.isDescent) {
+      // this.DescentDestination = this.descentHeight - this.drone.position.y;
+      this.isDescending  = true;
+      this.isDescent = false;
+    }
+    // if (this.isDescending && this.drone.position.y <= this.DescentDestination) {
+    //   this.isDescending = false;
+    // }
   }
 
   //управление прыжком до высшей точки персонажа
   private handleJumping(speedVector: Vector3): Vector3 {
     if (this.isJumping) {
       const percentDest =
-        1 - (this.jumpDestination - this.body.position.y) / this.jumpHeight;
+        1 - (this.drone.position.y)
       let jumpSpeedSlowdown = 0;
       if (percentDest > 0.8) {
         jumpSpeedSlowdown = this.jumpSpeed * 0.8;
@@ -176,12 +197,16 @@ export default class Movement extends droneStatus {
     return speedVector;
   }
 
-  //постепенная остановка прыжка
-  private doBrake() {
-    if (this.speedVector.lengthSquared() > 0.00001)
-      this.speedVector.subtractInPlace(this.speedVector.scale(this.slowdownK));
-    else this.speedVector = Vector3.Zero();
+  private handleDescent() {
+
   }
+
+  //постепенная остановка прыжка
+  // private doBrake() {
+  //   if (this.speedVector.lengthSquared() > 0.00001)
+  //     this.speedVector.subtractInPlace(this.speedVector.scale(this.slowdownK));
+  //   else this.speedVector = Vector3.Zero();
+  // }
 
   //корректировка максимальной скорости
   private correctMaxSpeed(): void {
@@ -203,10 +228,10 @@ export default class Movement extends droneStatus {
       );
     }
   }
-
-  //проверка на земле ли персонаж
+  //проверка на земле ли дрон
   private isGround(): boolean {
-    const ray = new Ray(this.body.position, Vector3.Down(), 0.85 + 0.2);
+    // console.log(this.drone);
+    const ray = new Ray(this.drone.position, Vector3.Down(), 0.85 + 0.2);
     return this.scene.pickWithRay(ray).hit;
   }
 }

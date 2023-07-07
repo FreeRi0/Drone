@@ -13,6 +13,8 @@ import {
   Axis,
   Space,
   ActionManager,
+  ShadowGenerator,
+  FollowCamera,
 } from "@babylonjs/core";
 import "@babylonjs/loaders";
 
@@ -20,28 +22,33 @@ import droneController from "./droneController";
 
 export default class Drone {
   camera: UniversalCamera;
+  camera2: FollowCamera;
   drone: AbstractMesh;
   head: Mesh;
+  // vint: AbstractMesh;
   droneOpportunities: droneController;
 
   constructor(private scene: Scene, private engine: Engine) {
     this.camera = this.createController(this.scene, this.engine);
-    this.setBody(this.camera, this.scene);
+    // this.createVint();
     this.head = this.createHead();
+    this.setBody(this.camera, this.scene);
 
     this.droneOpportunities = new droneController(
       this.drone,
       this.scene,
       this.engine,
       this.head
+      // this.vint
     );
     this.droneOpportunities.setController();
+    console.log(this.drone);
   }
 
   private createController(scene: Scene, engine: Engine): UniversalCamera {
     const camera = new UniversalCamera(
       "camera",
-      new Vector3(0, 0, 0),
+      new Vector3(0, 2, 10),
       this.scene
     );
 
@@ -51,34 +58,57 @@ export default class Drone {
     return camera;
   }
 
+  private followCam(scene: Scene, engine: Engine): FollowCamera {
+    const camera2 = new FollowCamera(
+      "camera2",
+      new Vector3(10, 0, 10),
+      this.scene
+    );
+
+    camera2.heightOffset = 2;
+    camera2.rotationOffset = 180;
+    camera2.cameraAcceleration = 0.1;
+    camera2.maxCameraSpeed = 1;
+    return camera2;
+  }
+
   private createHead(): Mesh {
     const head = MeshBuilder.CreateSphere("head", {
       diameter: 0.2,
     });
+    head.isVisible = true;
     head.position.y = 0.4;
-    head.isPickable = false;
-    head.metadata = { isTool: false };
     this.camera.parent = head;
     return head;
   }
 
   private setBody(camera: UniversalCamera, scene: Scene) {
+    this.drone = new AbstractMesh("droneWrapper");
+    SceneLoader.ImportMeshAsync("", "./models/", "DRONE_Vint.glb").then(
+      (meshes) => {
+        const InnerMesh = meshes.meshes[0];
+        InnerMesh.billboardMode = 2;
+        this.head.parent = this.drone;
+        InnerMesh.parent = this.drone;
+        this.drone.position.y = 15;
 
-    const InnerMesh = SceneLoader.ImportMesh(
-      "",
-      "./models/",
-      "DRONE_Vint.glb",
-      this.scene
+        // shadowGenerator.addShadowCaster(this.drone);
+      }
     );
-    this.head.parent = this.drone;
-    InnerMesh.billboardMode = 2;
-    this.drone = new AbstractMesh("playerWrapper");
-    InnerMesh.parent = this.drone;
-    this.drone.metadata = { isTool: false };
-    InnerMesh.metadata = { isTool: false };
-    InnerMesh.position.y = -0.35;
-    // InnerMesh.isVisible = false;
-    this.drone.position.y = 20;
-    // this.body.position.z = -7;
+
+    // console.log(this.drone);
   }
+
+  // private createVint() {
+  //   this.vint = new AbstractMesh("droneWrapper");
+  //   SceneLoader.ImportMeshAsync("", "./models/", "DRONE_Vint.glb").then(
+  //     (meshes) => {
+  //       const InnerMesh = meshes.meshes[1];
+  //       InnerMesh.billboardMode = 2;
+  //       this.drone.parent = this.vint;
+  //       InnerMesh.parent = this.vint;
+  //       this.vint.position.y = 1.5;
+  //     }
+  //   );
+  // }
 }

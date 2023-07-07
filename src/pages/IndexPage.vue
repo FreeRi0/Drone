@@ -23,8 +23,10 @@ export default defineComponent({
 
 <style lang="scss">
 canvas {
-  width: 80%;
-  height: 80%;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: absolute;
   border: none;
   outline: none;
   box-shadow: 8px 8px 10px -6px #000000;

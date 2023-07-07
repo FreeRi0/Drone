@@ -7,10 +7,8 @@ export default class ControllEvents {
   public left = false;
   public run = false;
   public jump = false;
-  // public pickInHand = false;
-  // public pickInInventar = false;
-  // public drop = false;
-  // public takeApart = false;
+  public descent = false;
+  public changeCam = false;
   public number: number;
 
   public handleControlEvents(event: KeyboardInfo) {
@@ -20,8 +18,8 @@ export default class ControllEvents {
     if (event.event.code === "KeyA") this.left = event.type === 1;
     if (event.event.code === "ShiftLeft") this.run = event.type === 1;
     if (event.event.code === "Space") this.jump = event.type === 1;
-    // // if (event.event.code === "KeyT") this.drop = event.type === 1;
-    // if (event.event.code === "KeyF") this.takeApart = event.type === 1;
+    if(event.event.code === "KeyZ") this.descent = event.type === 1;
+    if(event.event.code === "KeyF") this.changeCam = event.type === 1;
     if (
       event.event.inputIndex >= 49 &&
       event.event.inputIndex <= 56 &&

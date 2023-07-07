@@ -2,13 +2,10 @@ import {
   Scene,
   Engine,
   Vector3,
-  HemisphericLight,
   MeshBuilder,
-  CubeTexture,
   PBRMaterial,
   Texture,
   SceneLoader,
-  ArcRotateCamera,
   Space,
   AbstractMesh,
   StandardMaterial,
@@ -17,12 +14,13 @@ import {
   CannonJSPlugin,
   PhysicsImpostor,
   HDRCubeTexture,
+  FollowCamera,
+  ShadowGenerator,
 
 } from "@babylonjs/core";
 import "@babylonjs/materials";
 import "@babylonjs/loaders";
-import "@babylonjs/core/Debug/debugLayer";
-import "@babylonjs/inspector";
+import { Inspector } from "@babylonjs/inspector";
 import Drone from './drone/drone';
 import * as CANNON from "cannon";
 
@@ -40,6 +38,7 @@ export default class BasicScene {
     this.CreateEnvironment();
     this.controller = new Drone(this.scene, this.engine);
     this.camera = this.controller.camera;
+    this.createInspector();
     this.createSkyBox();
     this.engine.runRenderLoop(() => {
       this.scene.render();
@@ -61,12 +60,13 @@ export default class BasicScene {
     this.light.intensity = 0.9;
 
     const framesPerSecond = 60;
+    const shadowGenerator = new ShadowGenerator(1024, this.light);
     const gravity = -9.81;
     scene.gravity = new Vector3(0, gravity / framesPerSecond, 0);
     scene.collisionsEnabled = true;
     // this.scene.debugLayer.show();
 
-    return this.scene;
+    return scene;
   }
 
   async enablePhysic(): Promise<void> {
@@ -76,95 +76,54 @@ export default class BasicScene {
     );
   }
 
-  // async CreateDron(): Promise<void> {
-
-  //   const res = await SceneLoader.ImportMeshAsync(
-  //     "",
-  //     "./models/",
-  //     "DRONE_Vint.glb", this.scene)
-
-  //     this.drone = res.meshes[0];
-  //       console.log("dron");
-  //       console.log(this.drone);
-  //       this.drone.position.y = 0.5;
-
-  //       // this.drone.scaling.scaleInPlace(0.25);
-  //       this.prop1 = this.scene.getMeshByName('mesh_588');
-
-  //       // Bake transform to plane
-  //       this.drone.rotate(new Vector3(0, 1, 0), Math.PI / 2, Space.WORLD);
-  //       this.drone.bakeCurrentTransformIntoVertices();
-
-  //       var dummyPhysicsRoot = MeshBuilder.CreateBox("dummyPhysicsRoot", { size: 1, height: 0.4, width: 1 }, this.scene);
-  //       dummyPhysicsRoot.addChild(this.drone);
-  //       // DummyPhysicsRoot Visibility Change to 0 to Hide
-  //       dummyPhysicsRoot.visibility = 0.2;
-  //       dummyPhysicsRoot.position.y = 1;
-
-  //       var dummyAggregate = new PhysicsAggregate(dummyPhysicsRoot, PhysicsShapeType.BOX, { mass: 1, restitution: 0.1 }, this.scene);
-  //       dummyAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-
-  //       this.MoveDron(dummyAggregate);
-  //       // this.MoveKeyBoard(dummyAggregate);
-
-  //       dummyAggregate.body.setMassProperties({
-  //           inertia: new Vector3(1, 0, 1),
-  //           centerOfMass: new Vector3(0, -1, 0)
-  //       });
-
-  //     console.log(res);
-
-  // }
-
  async CreateEnvironment(): Promise<void> {
   this.enablePhysic();
     const ground = MeshBuilder.CreateGround(
       "ground",
-      { width: 500, height: 500 },
+      { width: 1000, height: 1000 },
       this.scene
     );
 
-    // ground.physicsImpostor = new PhysicsImpostor(
-    //   ground,
-    //   PhysicsImpostor.PlaneImpostor,
-    //   { mass: 0 }
-    // );
+    ground.physicsImpostor = new PhysicsImpostor(
+      ground,
+      PhysicsImpostor.PlaneImpostor,
+      { mass: 0 }
+    );
 
     ground.checkCollisions = true;
     ground.position.y = 4.359;
-    ground.isVisible = false;
     ground.material = this.CreateAsphalt();
 
-    const homeMeshes = await SceneLoader.ImportMeshAsync(
-      "",
-      "./models/",
-      "skyscaper.glb"
-    );
-    const home = homeMeshes.meshes[1];
+    // const homeMeshes = await SceneLoader.ImportMeshAsync(
+    //   "",
+    //   "./models/",
+    //   "Buildingg.glb"
+    // );
+    // const home = homeMeshes.meshes[1];
     // home.physicsImpostor = new PhysicsImpostor(
     //   home,
     //   PhysicsImpostor.BoxImpostor,
-    //   { mass: 0 }
+    //   { mass: 100 }
     // );
 
-    home.position.y = home.position.y - home.position.y / 2;
+    // home.position.y = home.position.y - home.position.y / 2;
     // home.checkCollisions = true;
 
-    const homeBox = MeshBuilder.CreateBox("homeBox", {
-      width: 5,
-      height: 5,
-      depth: 5,
-    });
-    homeBox.position.set(-0.001, 6.513, -5.405);
-    homeBox.scaling.set(0.838, 0.864, 1.235);
+    // const homeBox = MeshBuilder.CreateBox("homeBox", {
+    //   width: 5,
+    //   height: 5,
+    //   depth: 5,
+    // });
+    // homeBox.position.set(-0.001, 6.513, -5.405);
+    // homeBox.scaling.set(0.838, 0.864, 1.235);
 
-    homeBox.physicsImpostor = new PhysicsImpostor(
-      homeBox,
-      PhysicsImpostor.BoxImpostor,
-      { mass: 0 }
-    );
-    homeBox.checkCollisions = true;
-    homeBox.isVisible = false;
+    // homeBox.physicsImpostor = new PhysicsImpostor(
+    //   homeBox,
+    //   PhysicsImpostor.BoxImpostor,
+    //   { mass: 0 }
+    // );
+    // homeBox.checkCollisions = true;
+    // homeBox.isVisible = false;
   }
 
   CreateAsphalt(): PBRMaterial {
@@ -201,9 +160,41 @@ export default class BasicScene {
         this.scene,
       1000
     );
-
-    // this.scene.environmentTexture = skyboxMaterial;
     this.scene.createDefaultSkybox(skyboxMaterial, true);
+  }
+
+  createInspector(): void {
+    const secondCamera = new UniversalCamera(
+      "secondCamera",
+      new Vector3(0, 3, 0),
+      this.scene
+    );
+    secondCamera.minZ = 0;
+
+    secondCamera.speed = 0.3;
+
+    secondCamera.keysUp.push(87);
+    secondCamera.keysLeft.push(65);
+    secondCamera.keysDown.push(83);
+    secondCamera.keysRight.push(68);
+
+    this.scene.onKeyboardObservable.add((evt) => {
+      if (evt.type === 2 && evt.event.code === "KeyU") {
+        secondCamera.attachControl();
+        this.camera.detachControl();
+        Inspector.Show(this.scene, {});
+        this.engine.exitPointerlock;
+        this.scene.activeCameras = [];
+        this.scene.activeCameras.push(secondCamera);
+      } else if (evt.type === 2 && evt.event.code === "KeyO") {
+        if (!this.engine.isPointerLock) this.engine.enterPointerlock();
+        secondCamera.detachControl();
+        this.camera.attachControl();
+        Inspector.Hide();
+        this.scene.activeCameras = [];
+        this.scene.activeCameras.push(this.camera);
+      }
+    });
   }
 
   // MoveDron(player: any): void {
@@ -274,31 +265,5 @@ export default class BasicScene {
   //       }
   //     }
   //   );
-
-  //   this.scene.onKeyboardObservable.add((kbInfo) => {
-  //     switch (kbInfo.type) {
-  //       case KeyboardEventTypes.KEYDOWN:
-  //         switch (kbInfo.event.key) {
-  //                     case "a":
-  //                     case "A":
-  //                         this.drone.position.x -= 0.1;
-  //                     break
-  //                     case "d":
-  //                     case "D":
-  //                       this.drone.position.x += 0.1;
-  //                     break
-  //                     case "w":
-  //                     case "W":
-  //                       this.drone.position.y += 0.1;
-  //                     break
-  //                     case "s":
-  //                     case "S":
-  //                       this.drone.position.y -= 0.1;
-  //                     break
-  //                 }
-  //       break;
-  //     }
-  //   });
   // }
-
 }
